@@ -66,6 +66,11 @@
         </select>
         <label for="mode-select" class="sr-only">Mode</label>
         <select id="mode-select" class="sidebar__select" style="top: 115px"></select>
+          <label for="format-select" class="sr-only">Format</label>
+          <select id="format-select" class="sidebar__select" style="top: 159px">
+            <option value="flutter" selected>Flutter</option>
+            <option value="react">React</option>
+          </select>
       </aside>
 
       <main class="content">
@@ -215,6 +220,12 @@
           }
         }
       };
+
+        // Format dropdown event
+        document.getElementById('format-select').addEventListener('change', e => {
+            const format = e.target.value;
+            window.parent.postMessage({ pluginMessage: { type: 'setFormat', format } }, '*');
+        });
     </script>
   </body>
 </html>

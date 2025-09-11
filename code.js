@@ -12,6 +12,8 @@ const DROPDOWN_OPTIONS = ["Colors", "Text"];
 // Text modes (from Figma, or hardcoded if not available)
 const TEXT_MODES = ["app", "desktop", "deck"];
 
+// Format flag: 'flutter' or 'react'
+let colorFormat = 'flutter';
 // Helper to fetch text styles and variables for each mode
 function getTextStylesSnapshot() {
   try {
@@ -107,7 +109,11 @@ function getTextStylesSnapshot() {
           : style.fontName.family;
 
         entry.letterSpacing = bound.letterSpacing
-          ? resolveVariableValue(bound.letterSpacing.id, modeId, modeName).toFixed(2)
+          ? resolveVariableValue(
+              bound.letterSpacing.id,
+              modeId,
+              modeName
+            ).toFixed(2)
           : style.letterSpacing.value;
 
         entry.lineHeight = bound.lineHeight
@@ -431,14 +437,20 @@ function getColorVariablesSnapshot() {
         .padStart(2, "0");
     }
 
-    function rgbaToHex(rgba) {
-      if (!rgba || typeof rgba !== "object") return null;
-      var r = toHexByte(rgba.r);
-      var g = toHexByte(rgba.g);
-      var b = toHexByte(rgba.b);
-      var a = rgba.a == null ? 1 : rgba.a;
-      return a >= 1 ? "#" + r + g + b : "#" + r + g + b + toHexByte(a);
-    }
+      function rgbaToHex(rgba) {
+        if (!rgba || typeof rgba !== "object") return null;
+        var r = toHexByte(rgba.r);
+        var g = toHexByte(rgba.g);
+        var b = toHexByte(rgba.b);
+        var a = rgba.a == null ? 1 : rgba.a;
+        if (colorFormat === 'flutter') {
+          // Flutter: 0xAARRGGBB
+          return "0x" + toHexByte(a) + r + g + b;
+        } else {
+          // React: #RRGGBBAA
+          return "#" + r + g + b + toHexByte(a);
+        }
+      }
 
     function resolveAliasValue(valueOrAlias, modeId, modeName, guardDepth) {
       var depth = guardDepth || 0;
@@ -626,6 +638,21 @@ figma.ui.onmessage = async (msg) => {
         filename: `text-${mode}.json`,
         content: textJson,
       });
+    }
+  }
+  if (msg.type === 'setFormat') {
+    if (msg.format === 'flutter' || msg.format === 'react') {
+      colorFormat = msg.format;
+      if (DEBUG) figma.notify('Color format set to ' + colorFormat);
+        // Recompute color snapshot and send to UI
+        var snapshot = getColorVariablesSnapshot();
+        snapshot.values = Object.fromEntries(
+          Object.entries(snapshot.values).map(([mode, tree]) => [
+            mode,
+            sortObject(tree),
+          ])
+        );
+        figma.ui.postMessage({ type: "vars", payload: snapshot });
     }
   }
 };
